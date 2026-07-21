@@ -15,6 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher; // <-- Asegúrate de importar esto
 
 @Configuration
 @EnableWebSecurity
@@ -34,13 +35,14 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable()) 
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) 
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/index", "/index.html", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
-                
-                // Permitimos tanto /auth/** como /api/auth/** para evitar bloqueos por rutas
-                .requestMatchers("/auth/**", "/api/auth/**").permitAll() 
-                
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
-                
+                .requestMatchers(
+                    new AntPathRequestMatcher("/auth/**"),
+                    new AntPathRequestMatcher("/api/auth/**"),
+                    new AntPathRequestMatcher("/swagger-ui/**"),
+                    new AntPathRequestMatcher("/v3/api-docs/**"),
+                    new AntPathRequestMatcher("/swagger-ui.html"),
+                    new AntPathRequestMatcher("/")
+                ).permitAll()
                 .anyRequest().authenticated() 
             )
             .authenticationProvider(authenticationProvider()) 
