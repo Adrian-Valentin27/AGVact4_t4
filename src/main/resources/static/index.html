@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Menú Principal - Productos</title>
+    <style>
+        body { font-family: "Times New Roman", Times, serif; font-size: 16px; margin: 30px; }
+        ul { margin-bottom: 20px; }
+        a { color: blue; text-decoration: underline; cursor: pointer; }
+        .oculto { display: none; }
+        table { border-collapse: collapse; margin-top: 15px; width: 60%; }
+        th, td { border: 1px solid black; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .form-group { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="seccion-menu">
+        <ul>
+            <li><a onclick="mostrarPantalla('login')">1. Iniciar Sesión (Requerido para el JWT)</a></li>
+            <li><a onclick="mostrarPantalla('lista')">2. Lista de Productos en Base de Datos</a></li>
+            <li><a onclick="mostrarPantalla('formulario')">3. Nuevo Producto formulario</a></li>
+            <li><a onclick="mostrarPantalla('registro')">4. Registrar Nuevo Usuario</a></li>
+            <li><a href="/swagger-ui/index.html" target="_blank">5. Ver Documentación de la API (Swagger UI)</a></li>
+        </ul>
+        <p>CRUD completo: crear, leer, actualizar y eliminar Productos, con autenticación JWT persistiendo en MySQL.</p>
+        <p id="estado-sesion" style="color: red; font-weight: bold;">Estado: No has iniciado sesión.</p>
+    </div>
+
+    <hr>
+
+    <div id="pantalla-login" class="oculto">
+        <h3>Iniciar Sesión</h3>
+        <div class="form-group">
+            <label>Usuario:</label><br>
+            <input type="text" id="username">
+        </div>
+        <div class="form-group">
+            <label>Contraseña:</label><br>
+            <input type="password" id="password">
+        </div>
+        <button onclick="login()">Entrar y Obtener Token</button>
+        <button onclick="mostrarPantalla('menu')">Volver al Menú</button>
+    </div>
+
+    <div id="pantalla-lista" class="oculto">
+        <h3>Lista de Productos</h3>
+        <button onclick="cargarTabla()">Actualizar Tabla</button>
+        <button onclick="mostrarPantalla('menu')">Volver al Menú</button>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Precio</th>
+                    <th>Stock</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-cuerpo">
+            </tbody>
+        </table>
+    </div>
+
+    <div id="pantalla-formulario" class="oculto">
+        <h3 id="form-titulo">Nuevo Producto</h3>
+        <input type="hidden" id="prod-id">
+        <div class="form-group">
+            <label>Nombre:</label><br>
+            <input type="text" id="prod-nombre">
+        </div>
+        <div class="form-group">
+            <label>Precio:</label><br>
+            <input type="number" step="0.01" id="prod-precio">
+        </div>
+        <div class="form-group">
+            <label>Stock:</label><br>
+            <input type="number" id="prod-stock">
+        </div>
+        <button onclick="guardarProducto()">Guardar Producto</button>
+        <button onclick="mostrarPantalla('menu')">Cancelar / Volver</button>
+    </div>
+
+    <div id="pantalla-registro" class="oculto">
+        <h3>Registrar Nuevo Usuario</h3>
+        <div class="form-group">
+            <label>Nombre de Usuario:</label><br>
+            <input type="text" id="reg-username">
+        </div>
+        <div class="form-group">
+            <label>Correo Electrónico (Email):</label><br>
+            <input type="email" id="reg-email">
+        </div>
+        <div class="form-group">
+            <label>Contraseña:</label><br>
+            <input type="password" id="reg-password">
+        </div>
+        <button onclick="registrarUsuario()">Crear Usuario y Obtener Token</button>
+        <button onclick="mostrarPantalla('menu')">Volver al Menú</button>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8084/api";
+        let JWT_TOKEN = "";
+
+        function mostrarPantalla(pantalla) {
+            document.getElementById('pantalla-login').classList.add('oculto');
+            document.getElementById('pantalla-lista').classList.add('oculto');
+            document.getElementById('pantalla-formulario').classList.add('oculto');
+            document.getElementById('pantalla-registro').classList.add('oculto');
+            
+            if (pantalla !== 'menu') {
+                document.getElementById('pantalla-' + pantalla).classList.remove('oculto');
+            }
+
+            if(pantalla === 'lista') {
+                cargarTabla();
+            }
+
+            if(pantalla === 'formulario' && document.getElementById('prod-id').value === "") {
+                limpiarFormulario();
+            }
+        }
+
+        async function login() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            try {
+                const res = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    JWT_TOKEN = data.token;
+                    document.getElementById("estado-sesion").innerText = `Estado: Conectado con éxito (${username}).`;
+                    document.getElementById("estado-sesion").style.color = "green";
+                    alert("Sesión iniciada. Ya puedes ver la tabla.");
+                    mostrarPantalla('menu');
+                } else {
+                    alert("Usuario o contraseña incorrectos.");
+                }
+            } catch (error) {
+                alert("Error de conexión.");
+            }
+        }
+
+        async function registrarUsuario() {
+            const username = document.getElementById("reg-username").value;
+            const email = document.getElementById("reg-email").value;
+            const password = document.getElementById("reg-password").value;
+
+            if(!username || !email || !password) {
+                return alert("Por favor, rellena todos los campos.");
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    JWT_TOKEN = data.token; 
+                    
+                    document.getElementById("estado-sesion").innerText = `Estado: Conectado con éxito (${username}).`;
+                    document.getElementById("estado-sesion").style.color = "green";
+                    
+                    document.getElementById("reg-username").value = "";
+                    document.getElementById("reg-email").value = "";
+                    document.getElementById("reg-password").value = "";
+
+                    alert("¡Usuario creado con éxito! Se ha iniciado sesión automáticamente.");
+                    mostrarPantalla('menu');
+                } else {
+                    alert("Error al registrar. Revisa que el nombre de usuario no exista ya.");
+                }
+            } catch (error) {
+                alert("Error de conexión.");
+            }
+        }
+
+        async function cargarTabla() {
+            if (!JWT_TOKEN) {
+                document.getElementById("tabla-cuerpo").innerHTML = "<tr><td colspan='5' style='color:red;'>No se ha iniciado sesión.</td></tr>";
+                return;
+            }
+
+            const res = await fetch(`${API_URL}/productos`, {
+                headers: { 'Authorization': `Bearer ${JWT_TOKEN}` }
+            });
+            
+            if (res.ok) {
+                const productos = await res.json();
+                const tbody = document.getElementById("tabla-cuerpo");
+                tbody.innerHTML = "";
+                
+                if (productos.length === 0) {
+                    tbody.innerHTML = "<tr><td colspan='5'>No hay productos registrados.</td></tr>";
+                } else {
+                    productos.forEach(p => {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${p.id}</td>
+                                <td>${p.nombre}</td>
+                                <td>$${p.precio}</td>
+                                <td>${p.stock}</td>
+                                <td>
+                                    <a onclick="prepararEditar(${p.id}, '${p.nombre}', ${p.precio}, ${p.stock})">Editar</a> | 
+                                    <a onclick="eliminarProducto(${p.id})" style="color:red;">Eliminar</a>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            } else {
+                alert("Tu sesión ha caducado o tu Token no es válido.");
+            }
+        }
+
+        async function guardarProducto() {
+            if (!JWT_TOKEN) return alert("Error: Inicia sesión o regístrate primero.");
+
+            const id = document.getElementById("prod-id").value;
+            const nombre = document.getElementById("prod-nombre").value;
+            const precio = parseFloat(document.getElementById("prod-precio").value);
+            const stock = parseInt(document.getElementById("prod-stock").value);
+
+            const esEdicion = id !== "";
+            const url = esEdicion ? `${API_URL}/productos/${id}` : `${API_URL}/productos`;
+            const metodo = esEdicion ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method: metodo,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${JWT_TOKEN}` 
+                },
+                body: JSON.stringify({ nombre, precio, stock })
+            });
+
+            if (res.ok) {
+                alert(esEdicion ? "Producto modificado correctamente" : "Producto guardado correctamente");
+                limpiarFormulario();
+                mostrarPantalla('lista');
+            } else {
+                alert("Error al guardar en la base de datos.");
+            }
+        }
+
+        async function eliminarProducto(id) {
+            if (!JWT_TOKEN) return alert("Error: Inicia sesión primero.");
+            if (!confirm(`¿Estás seguro de eliminar el producto ${id}?`)) return;
+
+            const res = await fetch(`${API_URL}/productos/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${JWT_TOKEN}` }
+            });
+
+            if (res.ok) {
+                cargarTabla();
+            } else {
+                alert("Error al eliminar.");
+            }
+        }
+
+        function prepararEditar(id, nombre, precio, stock) {
+            document.getElementById("prod-id").value = id;
+            document.getElementById("prod-nombre").value = nombre;
+            document.getElementById("prod-precio").value = precio;
+            document.getElementById("prod-stock").value = stock;
+            document.getElementById("form-titulo").innerText = "Editar Producto ID: " + id;
+            mostrarPantalla('formulario');
+        }
+
+        function limpiarFormulario() {
+            document.getElementById("prod-id").value = "";
+            document.getElementById("prod-nombre").value = "";
+            document.getElementById("prod-precio").value = "";
+            document.getElementById("prod-stock").value = "";
+            document.getElementById("form-titulo").innerText = "Nuevo Producto";
+        }
+    </script>
+</body>
+</html>
