@@ -34,14 +34,11 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable()) 
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) 
             .authorizeHttpRequests(auth -> auth
-                // CORREGIDO: Se agregó "/index" para que sea público
-                .requestMatchers("/", "/index", "/index.html").permitAll()
+                .requestMatchers("/", "/index", "/index.html", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
                 
                 .requestMatchers("/api/auth/**").permitAll() 
                 
-                .requestMatchers("/swagger-ui/**").permitAll()
-                .requestMatchers("/v3/api-docs/**").permitAll()
-                .requestMatchers("/swagger-ui.html").permitAll()
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 
                 .anyRequest().authenticated() 
             )
