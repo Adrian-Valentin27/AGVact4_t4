@@ -36,7 +36,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/", "/index", "/index.html", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
                 
-                .requestMatchers("/api/auth/**").permitAll() 
+                // Permitimos tanto /auth/** como /api/auth/** para evitar bloqueos por rutas
+                .requestMatchers("/auth/**", "/api/auth/**").permitAll() 
                 
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 
