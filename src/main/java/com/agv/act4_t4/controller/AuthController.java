@@ -36,9 +36,9 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
         User user = User.builder()
-                .username(request.getUsername())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .email(request.getEmail())
+                .username(request.getUsuario())
+                .password(passwordEncoder.encode(request.getContrasena()))
+                .email(request.getCorreo())
                 .build();
         
         userRepository.save(user);
@@ -52,10 +52,10 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(request.getUsuario(), request.getContrasena())
         );
         
-        UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
+        UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsuario());
         String token = jwtService.generateToken(userDetails);
         
         return ResponseEntity.ok(new AuthResponse(token));
